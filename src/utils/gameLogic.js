@@ -30,13 +30,56 @@ export function getEmptyCells(board) {
   return cells;
 }
 
-// 랜덤 타일 스폰 (90% 확률 2, 10% 확률 4)
+// 현재 보드의 최고 블럭 값 찾기
+export function getMaxTileValue(board) {
+  let max = 2;
+  const size = board.length;
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (board[r][c] && board[r][c].value > max) {
+        max = board[r][c].value;
+      }
+    }
+  }
+  return max;
+}
+
+// 최고 블럭 숫자에 따라 동적으로 스폰되는 블럭 값 결정
+export function getDynamicSpawnValue(board) {
+  const max = getMaxTileValue(board);
+  const rand = Math.random();
+
+  if (max < 64) {
+    // 초반 구간 (최고 < 64): 2 (80%), 4 (20%)
+    return rand < 0.8 ? 2 : 4;
+  } else if (max < 256) {
+    // 중반 구간 (64 ~ 128): 2 (65%), 4 (25%), 8 (10%)
+    if (rand < 0.65) return 2;
+    if (rand < 0.90) return 4;
+    return 8;
+  } else if (max < 1024) {
+    // 고득점 구간 (256 ~ 512): 2 (50%), 4 (30%), 8 (15%), 16 (5%)
+    if (rand < 0.50) return 2;
+    if (rand < 0.80) return 4;
+    if (rand < 0.95) return 8;
+    return 16;
+  } else {
+    // 마스터 구간 (1024 이상): 2 (40%), 4 (30%), 8 (18%), 16 (9%), 32 (3%)
+    if (rand < 0.40) return 2;
+    if (rand < 0.70) return 4;
+    if (rand < 0.88) return 8;
+    if (rand < 0.97) return 16;
+    return 32;
+  }
+}
+
+// 랜덤 타일 스폰 (현재 판의 최고 숫자에 연동)
 export function spawnRandomTile(board) {
   const emptyCells = getEmptyCells(board);
   if (emptyCells.length === 0) return { newBoard: board, spawned: null };
 
   const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-  const value = Math.random() < 0.9 ? 2 : 4;
+  const value = getDynamicSpawnValue(board);
   const tile = createTile(value, randomCell.r, randomCell.c, true);
 
   const newBoard = board.map((row) => [...row]);
