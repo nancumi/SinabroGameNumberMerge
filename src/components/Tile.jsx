@@ -16,18 +16,31 @@ const TILE_STYLES = {
   8192: 'bg-pink-700 text-pink-50 border-pink-400/90 shadow-[0_0_24px_rgba(236,72,153,0.6)]',
 };
 
-function getFontSize(value) {
-  if (value < 100) return 'text-[14px] sm:text-[16px] font-bold';
-  if (value < 1000) return 'text-[12px] sm:text-[13px] font-bold';
-  if (value < 10000) return 'text-[11px] sm:text-[12px] font-extrabold tracking-tighter';
-  return 'text-[11px] font-black tracking-tighter';
+function getFontSize(value, gridSize = 4) {
+  if (gridSize === 4) {
+    if (value < 100) return 'text-[18px] sm:text-[22px] font-bold';
+    if (value < 1000) return 'text-[15px] sm:text-[18px] font-bold';
+    if (value < 10000) return 'text-[13px] sm:text-[15px] font-extrabold tracking-tight';
+    return 'text-[11px] sm:text-[12px] font-black tracking-tight';
+  } else if (gridSize === 5) {
+    if (value < 100) return 'text-[16px] sm:text-[18px] font-bold';
+    if (value < 1000) return 'text-[13px] sm:text-[15px] font-bold';
+    if (value < 10000) return 'text-[11px] sm:text-[13px] font-extrabold tracking-tight';
+    return 'text-[11px] font-black tracking-tight';
+  } else {
+    // 6x6
+    if (value < 100) return 'text-[13px] sm:text-[15px] font-bold';
+    if (value < 1000) return 'text-[12px] sm:text-[13px] font-bold';
+    if (value < 10000) return 'text-[11px] sm:text-[12px] font-extrabold tracking-tighter';
+    return 'text-[11px] font-black tracking-tighter';
+  }
 }
 
-export default function Tile({ tile }) {
+export default function Tile({ tile, gridSize = 4 }) {
   if (!tile) return null;
 
   const styleClass = TILE_STYLES[tile.value] || 'bg-fuchsia-700 text-white border-fuchsia-400 shadow-xl';
-  const fontClass = getFontSize(tile.value);
+  const fontClass = getFontSize(tile.value, gridSize);
   const animClass = tile.isNew ? 'tile-new' : tile.isMerged ? 'tile-merged' : '';
 
   return (
@@ -38,4 +51,3 @@ export default function Tile({ tile }) {
     </div>
   );
 }
-

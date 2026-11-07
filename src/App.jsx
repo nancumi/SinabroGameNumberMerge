@@ -10,9 +10,9 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
+  Grid,
 } from 'lucide-react';
 import {
-  GRID_SIZE,
   initGame,
   moveBoard,
   spawnRandomTile,
@@ -27,21 +27,28 @@ import {
 import Tile from './components/Tile';
 import Modal from './components/Modal';
 
-const LOCAL_STORAGE_KEY = 'sinabro_2048_6x6_best_score';
+const AVAILABLE_SIZES = [4, 5, 6];
+
+function getStorageKey(size) {
+  return `sinabro_2048_${size}x${size}_best_score`;
+}
 
 export default function App() {
-  const [board, setBoard] = useState(() => initGame());
+  const [gridSize, setGridSize] = useState(4);
+  const [board, setBoard] = useState(() => initGame(4));
   const [score, setScore] = useState(0);
   const [bestScore, setBestScore] = useState(() => {
     try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      const saved = localStorage.getItem(getStorageKey(4));
       return saved ? parseInt(saved, 10) : 0;
     } catch {
       return 0;
     }
   });
+
   const [isGameOver, setIsGameOver] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isSizeSelectOpen, setIsSizeSelectOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hasNewRecord, setHasNewRecord] = useState(false);
 
@@ -49,12 +56,31 @@ export default function App() {
   const gestureStartRef = useRef({ x: 0, y: 0, time: 0, isDown: false });
   const isProcessingRef = useRef(false);
 
+  // 격자 크기 변경 및 새 게임 시작
+  const handleChangeGridSize = useCallback((newSize) => {
+    setGridSize(newSize);
+    const newBoard = initGame(newSize);
+    setBoard(newBoard);
+    setScore(0);
+    setIsGameOver(false);
+    setHasNewRecord(false);
+    setIsSizeSelectOpen(false);
+    isProcessingRef.current = false;
+
+    try {
+      const saved = localStorage.getItem(getStorageKey(newSize));
+      setBestScore(saved ? parseInt(saved, 10) : 0);
+    } catch {
+      setBestScore(0);
+    }
+  }, []);
+
   // 최고 점수 갱신 처리
-  const updateBestScore = useCallback((newScore) => {
+  const updateBestScore = useCallback((newScore, size) => {
     setBestScore((prevBest) => {
       if (newScore > prevBest) {
         try {
-          localStorage.setItem(LOCAL_STORAGE_KEY, newScore.toString());
+          localStorage.setItem(getStorageKey(size), newScore.toString());
         } catch {
           // localStorage 예외 무시
         }
@@ -66,13 +92,13 @@ export default function App() {
 
   // 게임 재시작
   const handleRestart = useCallback(() => {
-    const newBoard = initGame();
+    const newBoard = initGame(gridSize);
     setBoard(newBoard);
     setScore(0);
     setIsGameOver(false);
     setHasNewRecord(false);
     isProcessingRef.current = false;
-  }, []);
+  }, [gridSize]);
 
   // 방향 이동 핸들러
   const handleMove = useCallback(
@@ -113,7 +139,7 @@ export default function App() {
             });
           }
 
-          updateBestScore(nextScore);
+          updateBestScore(nextScore, gridSize);
         }
 
         // 새 타일 생성
@@ -141,7 +167,7 @@ export default function App() {
         return boardWithSpawn;
       });
     },
-    [isGameOver, soundEnabled, score, bestScore, hasNewRecord, updateBestScore]
+    [isGameOver, soundEnabled, score, bestScore, hasNewRecord, updateBestScore, gridSize]
   );
 
   // 키보드 이벤트 리스너
@@ -218,6 +244,13 @@ export default function App() {
     processGestureEnd(e.clientX, e.clientY);
   };
 
+  // 격자별 grid CSS 클래스 매핑
+  const gridClassMap = {
+    4: 'grid-cols-4 grid-rows-4 gap-2 sm:gap-2.5',
+    5: 'grid-cols-5 grid-rows-5 gap-1.5 sm:gap-2',
+    6: 'grid-cols-6 grid-rows-6 gap-1.5 sm:gap-2',
+  };
+
   return (
     <div
       className="flex flex-col items-center justify-center min-h-screen w-full bg-slate-950 px-3 py-2 text-slate-200 select-none touch-none"
@@ -232,7 +265,7 @@ export default function App() {
         <div className="w-full flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded-2xl px-3 py-2 shadow-lg backdrop-blur-md">
           {/* 점수 영역 */}
           <div className="flex items-center gap-2">
-            <div className="flex flex-col items-center bg-slate-800/80 border border-slate-700/60 rounded-xl px-2.5 py-1 min-w-[70px]">
+            <div className="flex flex-col items-center bg-slate-800/80 border border-slate-700/60 rounded-xl px-2.5 py-1 min-w-[68px]">
               <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
                 SCORE
               </span>
@@ -241,7 +274,7 @@ export default function App() {
               </span>
             </div>
 
-            <div className="flex flex-col items-center bg-slate-800/80 border border-slate-700/60 rounded-xl px-2.5 py-1 min-w-[70px]">
+            <div className="flex flex-col items-center bg-slate-800/80 border border-slate-700/60 rounded-xl px-2.5 py-1 min-w-[68px]">
               <div className="flex items-center gap-1 text-[11px] font-medium text-amber-400 uppercase tracking-wider">
                 <Trophy className="w-3 h-3 text-amber-400" />
                 <span>BEST</span>
@@ -252,8 +285,19 @@ export default function App() {
             </div>
           </div>
 
-          {/* 유틸리티 버튼 (도움말, 사운드, 재시작) */}
+          {/* 격자 크기 선택 및 유틸리티 버튼 */}
           <div className="flex items-center gap-1.5">
+            {/* 격자 선택 팝업 열기 버튼 */}
+            <button
+              type="button"
+              onClick={() => setIsSizeSelectOpen(true)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-sky-300 hover:text-sky-200 border border-slate-700/60 transition-colors text-[12px] font-medium"
+              title="격자 크기 변경"
+            >
+              <Grid className="w-3.5 h-3.5" />
+              <span>{gridSize}x{gridSize}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setIsHelpOpen(true)}
@@ -290,15 +334,19 @@ export default function App() {
           </div>
         </div>
 
-        {/* 6x6 메인 격자판 */}
-        <div className="w-full aspect-square bg-slate-900 border border-slate-800/90 rounded-2xl p-2 sm:p-2.5 shadow-2xl relative grid grid-cols-6 grid-rows-6 gap-1.5 sm:gap-2">
+        {/* 메인 격자판 (4x4, 5x5, 6x6 반응형) */}
+        <div
+          className={`w-full aspect-square bg-slate-900 border border-slate-800/90 rounded-2xl p-2 sm:p-2.5 shadow-2xl relative grid ${
+            gridClassMap[gridSize] || gridClassMap[4]
+          }`}
+        >
           {board.map((row, r) =>
             row.map((tile, c) => (
               <div
                 key={`cell-${r}-${c}`}
                 className="w-full h-full bg-slate-800/40 rounded-lg border border-slate-800/60 flex items-center justify-center relative overflow-hidden"
               >
-                {tile && <Tile tile={tile} />}
+                {tile && <Tile tile={tile} gridSize={gridSize} />}
               </div>
             ))
           )}
@@ -346,11 +394,50 @@ export default function App() {
         </div>
       </div>
 
+      {/* 격자 크기 선택 모달 */}
+      <Modal
+        isOpen={isSizeSelectOpen}
+        onClose={() => setIsSizeSelectOpen(false)}
+        title="격자 크기 선택"
+        actions={
+          <button
+            type="button"
+            onClick={() => setIsSizeSelectOpen(false)}
+            className="px-3.5 py-1.5 rounded-lg text-[12px] font-medium bg-slate-700/80 text-slate-200 hover:bg-slate-600 transition-colors"
+          >
+            취소
+          </button>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-[12px] text-slate-300">
+            플레이할 격자 크기를 선택해 주세요.
+          </p>
+          <div className="grid grid-cols-3 gap-2 pt-1">
+            {AVAILABLE_SIZES.map((size) => (
+              <button
+                key={`size-${size}`}
+                type="button"
+                onClick={() => handleChangeGridSize(size)}
+                className={`py-3 px-2 rounded-xl text-[12px] font-semibold border transition-all active:scale-95 flex flex-col items-center gap-1 ${
+                  gridSize === size
+                    ? 'bg-sky-200 text-sky-950 border-sky-300 shadow-md ring-2 ring-sky-400/50'
+                    : 'bg-slate-800/80 text-slate-200 border-slate-700 hover:bg-slate-700/80'
+                }`}
+              >
+                <span className="text-[14px] font-bold">{size} x {size}</span>
+                <span className="text-[11px] opacity-80">{size * size} 칸</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </Modal>
+
       {/* 게임 방법 안내 모달 */}
       <Modal
         isOpen={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
-        title="게임 방법 (6x6 Merge)"
+        title="게임 방법"
         actions={
           <button
             type="button"
@@ -371,15 +458,15 @@ export default function App() {
             </ul>
           </div>
           <div>
-            <span className="font-semibold text-slate-100">2. 규칙:</span>
+            <span className="font-semibold text-slate-100">2. 격자 선택:</span>
             <p className="mt-1 leading-relaxed text-slate-300">
-              한 방향으로 밀면 모든 타일이 그 방향으로 이동하며, 같은 숫자가 만나면 하나로 합쳐져 배가 됩니다 (2+2=4, 4+4=8 ...).
+              상단의 격자 버튼을 눌러 언제든지 4x4, 5x5, 6x6 모드로 전환할 수 있습니다.
             </p>
           </div>
           <div>
-            <span className="font-semibold text-slate-100">3. 목표:</span>
+            <span className="font-semibold text-slate-100">3. 규칙 & 목표:</span>
             <p className="mt-1 leading-relaxed text-slate-300">
-              빈 칸이 다 차서 더 이상 움직일 수 없을 때까지 최대한 높은 숫자를 만들고 최고 점수를 달성해보세요!
+              한 방향으로 밀면 모든 타일이 이동하며 같은 숫자가 만나면 합쳐집니다. 빈 칸이 모두 차기 전까지 최고 점수에 도전하세요!
             </p>
           </div>
         </div>
@@ -411,7 +498,7 @@ export default function App() {
       >
         <div className="space-y-2">
           <p className="text-[12px] text-slate-300">
-            더 이상 이동할 수 있는 빈 칸이 없습니다.
+            더 이상 이동할 수 있는 빈 칸이 없습니다. ({gridSize}x{gridSize} 모드)
           </p>
           <div className="py-2 px-3 bg-slate-800/80 rounded-xl border border-slate-700/50 flex justify-around items-center">
             <div className="text-center">
