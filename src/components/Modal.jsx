@@ -6,6 +6,7 @@ import React from 'react';
  * - 바깥 영역 마우스 커서 기본 유지 (cursor-default)
  * - 버튼 글자 크기 12px, 파스텔톤 색상
  * - 기본 글자 크기 12px, 최소 11px
+ * - actions={null} 전달 시 하단 버튼 영역 미노출
  */
 export default function Modal({ isOpen, onClose, title, children, actions }) {
   if (!isOpen) return null;
@@ -25,13 +26,17 @@ export default function Modal({ isOpen, onClose, title, children, actions }) {
             {title}
           </div>
         )}
-        <div className="text-slate-300 text-center text-[12px] mb-5 leading-relaxed">
+        <div className={`text-slate-300 text-center text-[12px] leading-relaxed ${actions !== null ? 'mb-5' : ''}`}>
           {children}
         </div>
-        <div className="flex items-center justify-center gap-2">
-          {actions ? (
-            actions
-          ) : (
+        {actions !== undefined ? (
+          actions ? (
+            <div className="flex items-center justify-center gap-2 mt-4">
+              {actions}
+            </div>
+          ) : null
+        ) : (
+          <div className="flex items-center justify-center gap-2 mt-4">
             <button
               type="button"
               onClick={onClose}
@@ -39,10 +44,9 @@ export default function Modal({ isOpen, onClose, title, children, actions }) {
             >
               확인
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

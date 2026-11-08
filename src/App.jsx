@@ -387,24 +387,14 @@ export default function App() {
         </div>
       </div>
 
-      {/* 게임 시작 전 격자 선택 모달 (규칙 준수: alert 금지, 바깥 클릭 종료, 마우스 커서 기본, 버튼 12px 파스텔톤) */}
+      {/* 게임 시작 전 격자 선택 모달 */}
       <Modal
         isOpen={isStartModalOpen}
         onClose={() => {
           if (isGameStarted) setIsStartModalOpen(false);
         }}
         title="게임 격자 선택"
-        actions={
-          isGameStarted ? (
-            <button
-              type="button"
-              onClick={() => setIsStartModalOpen(false)}
-              className="px-3.5 py-1.5 rounded-lg text-[12px] font-medium bg-slate-700/80 text-slate-200 hover:bg-slate-600 transition-colors"
-            >
-              계속하기
-            </button>
-          ) : null
-        }
+        actions={null}
       >
         <div className="space-y-3">
           <p className="text-[12px] text-slate-300">
@@ -416,14 +406,10 @@ export default function App() {
                 key={`start-size-${size}`}
                 type="button"
                 onClick={() => handleStartGame(size)}
-                className={`py-3.5 px-2 rounded-xl text-[12px] font-semibold border transition-all active:scale-95 flex flex-col items-center gap-1.5 ${
-                  gridSize === size
-                    ? 'bg-sky-200 text-sky-950 border-sky-300 shadow-lg ring-2 ring-sky-400/60'
-                    : 'bg-slate-800/80 text-slate-200 border-slate-700 hover:bg-slate-700/80'
-                }`}
+                className="py-3.5 px-2 rounded-xl text-[12px] font-semibold border transition-all active:scale-95 flex flex-col items-center gap-1.5 bg-slate-800/80 text-slate-200 border-slate-700/80 hover:bg-slate-700/90 hover:border-sky-400 hover:text-white cursor-pointer shadow-sm"
               >
                 <span className="text-[16px] font-bold">{size} x {size}</span>
-                <span className="text-[11px] opacity-80">{size * size} 칸</span>
+                <span className="text-[11px] text-slate-400">{size * size} 칸</span>
               </button>
             ))}
           </div>
