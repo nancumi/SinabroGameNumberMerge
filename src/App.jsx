@@ -10,7 +10,6 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
-  Grid,
 } from 'lucide-react';
 import {
   initGame,
@@ -46,9 +45,10 @@ export default function App() {
     }
   });
 
+  const [isGameStarted, setIsGameStarted] = useState(false);
+  const [isStartModalOpen, setIsStartModalOpen] = useState(true);
   const [isGameOver, setIsGameOver] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [isSizeSelectOpen, setIsSizeSelectOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hasNewRecord, setHasNewRecord] = useState(false);
 
@@ -56,19 +56,20 @@ export default function App() {
   const gestureStartRef = useRef({ x: 0, y: 0, time: 0, isDown: false });
   const isProcessingRef = useRef(false);
 
-  // 격자 크기 변경 및 새 게임 시작
-  const handleChangeGridSize = useCallback((newSize) => {
-    setGridSize(newSize);
-    const newBoard = initGame(newSize);
+  // 격자 크기 선택 후 게임 시작
+  const handleStartGame = useCallback((selectedSize) => {
+    setGridSize(selectedSize);
+    const newBoard = initGame(selectedSize);
     setBoard(newBoard);
     setScore(0);
     setIsGameOver(false);
     setHasNewRecord(false);
-    setIsSizeSelectOpen(false);
+    setIsGameStarted(true);
+    setIsStartModalOpen(false);
     isProcessingRef.current = false;
 
     try {
-      const saved = localStorage.getItem(getStorageKey(newSize));
+      const saved = localStorage.getItem(getStorageKey(selectedSize));
       setBestScore(saved ? parseInt(saved, 10) : 0);
     } catch {
       setBestScore(0);
@@ -90,20 +91,17 @@ export default function App() {
     });
   }, []);
 
-  // 게임 재시작
+  // 게임 재시작 (격자 선택 모달 다시 열기)
   const handleRestart = useCallback(() => {
-    const newBoard = initGame(gridSize);
-    setBoard(newBoard);
-    setScore(0);
+    setIsStartModalOpen(true);
     setIsGameOver(false);
-    setHasNewRecord(false);
     isProcessingRef.current = false;
-  }, [gridSize]);
+  }, []);
 
   // 방향 이동 핸들러
   const handleMove = useCallback(
     (direction) => {
-      if (isGameOver || isProcessingRef.current) return;
+      if (!isGameStarted || isGameOver || isStartModalOpen || isProcessingRef.current) return;
       isProcessingRef.current = true;
 
       setBoard((currentBoard) => {
@@ -142,7 +140,7 @@ export default function App() {
           updateBestScore(nextScore, gridSize);
         }
 
-        // 새 타일 생성
+        // 새 타일 생성 (네온 펄스 애니메이션 포함)
         const { newBoard: boardWithSpawn } = spawnRandomTile(moveResult.board);
 
         // 게임오버 체크
@@ -167,7 +165,7 @@ export default function App() {
         return boardWithSpawn;
       });
     },
-    [isGameOver, soundEnabled, score, bestScore, hasNewRecord, updateBestScore, gridSize]
+    [isGameStarted, isGameOver, isStartModalOpen, soundEnabled, score, bestScore, hasNewRecord, updateBestScore, gridSize]
   );
 
   // 키보드 이벤트 리스너
@@ -260,48 +258,43 @@ export default function App() {
       onMouseUp={handleMouseUp}
     >
       {/* 중앙 핵심 콘텐츠 컨테이너 */}
-      <div className="w-full max-w-[420px] flex flex-col items-center gap-2.5">
-        {/* 상단 컨트롤 및 스코어 바 */}
-        <div className="w-full flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded-2xl px-3 py-2 shadow-lg backdrop-blur-md">
-          {/* 점수 영역 */}
-          <div className="flex items-center gap-2">
-            <div className="flex flex-col items-center bg-slate-800/80 border border-slate-700/60 rounded-xl px-2.5 py-1 min-w-[68px]">
+      <div className="w-full max-w-[420px] flex flex-col items-center gap-2">
+        {/* 게임 화면 바깥 최상단 우측 BEST 표시 영역 */}
+        <div className="w-full flex items-center justify-between px-1">
+          <div className="text-[11px] font-semibold text-slate-400">
+            {gridSize}x{gridSize} MODE
+          </div>
+          <div className="flex items-center gap-1.5 bg-slate-900/90 border border-amber-500/30 rounded-xl px-3 py-1 shadow-md">
+            <Trophy className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-[11px] font-medium text-amber-400 uppercase tracking-wider">
+              BEST
+            </span>
+            <span className="text-[13px] font-bold text-amber-300 ml-1">
+              {bestScore.toLocaleString()}
+            </span>
+          </div>
+        </div>
+
+        {/* 상단 컨트롤 및 스코어 바 (격자 변경 버튼 제거, 오직 SCORE와 유틸리티만 배치) */}
+        <div className="w-full flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded-2xl px-3.5 py-2 shadow-lg backdrop-blur-md">
+          {/* 점수 영역 (SCORE만 남김) */}
+          <div className="flex items-center">
+            <div className="flex flex-col items-center bg-slate-800/80 border border-slate-700/60 rounded-xl px-3.5 py-1 min-w-[80px]">
               <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
                 SCORE
               </span>
-              <span className="text-[13px] font-bold text-sky-400">
+              <span className="text-[14px] font-bold text-sky-400">
                 {score.toLocaleString()}
-              </span>
-            </div>
-
-            <div className="flex flex-col items-center bg-slate-800/80 border border-slate-700/60 rounded-xl px-2.5 py-1 min-w-[68px]">
-              <div className="flex items-center gap-1 text-[11px] font-medium text-amber-400 uppercase tracking-wider">
-                <Trophy className="w-3 h-3 text-amber-400" />
-                <span>BEST</span>
-              </div>
-              <span className="text-[13px] font-bold text-amber-300">
-                {bestScore.toLocaleString()}
               </span>
             </div>
           </div>
 
-          {/* 격자 크기 선택 및 유틸리티 버튼 */}
+          {/* 유틸리티 버튼 (도움말, 사운드, 재시작) */}
           <div className="flex items-center gap-1.5">
-            {/* 격자 선택 팝업 열기 버튼 */}
-            <button
-              type="button"
-              onClick={() => setIsSizeSelectOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-sky-300 hover:text-sky-200 border border-slate-700/60 transition-colors text-[12px] font-medium"
-              title="격자 크기 변경"
-            >
-              <Grid className="w-3.5 h-3.5" />
-              <span>{gridSize}x{gridSize}</span>
-            </button>
-
             <button
               type="button"
               onClick={() => setIsHelpOpen(true)}
-              className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-slate-100 border border-slate-700/60 transition-colors"
+              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-slate-100 border border-slate-700/60 transition-colors"
               title="게임 방법"
               aria-label="도움말"
             >
@@ -311,7 +304,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-slate-100 border border-slate-700/60 transition-colors"
+              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-300 hover:text-slate-100 border border-slate-700/60 transition-colors"
               title={soundEnabled ? '효과음 끄기' : '효과음 켜기'}
               aria-label="효과음 토글"
             >
@@ -325,7 +318,7 @@ export default function App() {
             <button
               type="button"
               onClick={handleRestart}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700/60 transition-colors text-[12px] font-medium"
+              className="flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 border border-slate-700/60 transition-colors text-[12px] font-medium"
               title="게임 재시작"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -334,7 +327,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* 메인 격자판 (4x4, 5x5, 6x6 반응형) */}
+        {/* 메인 격자판 */}
         <div
           className={`w-full aspect-square bg-slate-900 border border-slate-800/90 rounded-2xl p-2 sm:p-2.5 shadow-2xl relative grid ${
             gridClassMap[gridSize] || gridClassMap[4]
@@ -352,80 +345,84 @@ export default function App() {
           )}
         </div>
 
-        {/* 미니멀 방향 컨트롤 패드 (클릭/터치 즉시 이동) */}
-        <div className="w-full flex items-center justify-center pt-1">
-          <div className="grid grid-cols-3 gap-1.5 w-44">
+        {/* 2배 확대된 하단 방향 컨트롤 패드 */}
+        <div className="w-full flex items-center justify-center pt-2">
+          <div className="grid grid-cols-3 gap-2 w-72 sm:w-80">
             <div />
             <button
               type="button"
               onClick={() => handleMove('UP')}
-              className="h-9 flex items-center justify-center rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 active:scale-95 border border-slate-800 transition-all shadow-sm"
+              className="h-14 sm:h-16 flex items-center justify-center rounded-2xl bg-slate-900/95 hover:bg-slate-800 active:scale-95 border border-slate-800 shadow-md transition-all"
               aria-label="위로 이동"
             >
-              <ArrowUp className="w-4 h-4 text-sky-400" />
+              <ArrowUp className="w-7 h-7 text-sky-400" />
             </button>
             <div />
 
             <button
               type="button"
               onClick={() => handleMove('LEFT')}
-              className="h-9 flex items-center justify-center rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 active:scale-95 border border-slate-800 transition-all shadow-sm"
+              className="h-14 sm:h-16 flex items-center justify-center rounded-2xl bg-slate-900/95 hover:bg-slate-800 active:scale-95 border border-slate-800 shadow-md transition-all"
               aria-label="왼쪽으로 이동"
             >
-              <ArrowLeft className="w-4 h-4 text-sky-400" />
+              <ArrowLeft className="w-7 h-7 text-sky-400" />
             </button>
             <button
               type="button"
               onClick={() => handleMove('DOWN')}
-              className="h-9 flex items-center justify-center rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 active:scale-95 border border-slate-800 transition-all shadow-sm"
+              className="h-14 sm:h-16 flex items-center justify-center rounded-2xl bg-slate-900/95 hover:bg-slate-800 active:scale-95 border border-slate-800 shadow-md transition-all"
               aria-label="아래로 이동"
             >
-              <ArrowDown className="w-4 h-4 text-sky-400" />
+              <ArrowDown className="w-7 h-7 text-sky-400" />
             </button>
             <button
               type="button"
               onClick={() => handleMove('RIGHT')}
-              className="h-9 flex items-center justify-center rounded-xl bg-slate-900/90 hover:bg-slate-800 text-slate-300 active:scale-95 border border-slate-800 transition-all shadow-sm"
+              className="h-14 sm:h-16 flex items-center justify-center rounded-2xl bg-slate-900/95 hover:bg-slate-800 active:scale-95 border border-slate-800 shadow-md transition-all"
               aria-label="오른쪽으로 이동"
             >
-              <ArrowRight className="w-4 h-4 text-sky-400" />
+              <ArrowRight className="w-7 h-7 text-sky-400" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* 격자 크기 선택 모달 */}
+      {/* 게임 시작 전 격자 선택 모달 (규칙 준수: alert 금지, 바깥 클릭 종료, 마우스 커서 기본, 버튼 12px 파스텔톤) */}
       <Modal
-        isOpen={isSizeSelectOpen}
-        onClose={() => setIsSizeSelectOpen(false)}
-        title="격자 크기 선택"
+        isOpen={isStartModalOpen}
+        onClose={() => {
+          if (isGameStarted) setIsStartModalOpen(false);
+        }}
+        title="게임 격자 선택"
         actions={
-          <button
-            type="button"
-            onClick={() => setIsSizeSelectOpen(false)}
-            className="px-3.5 py-1.5 rounded-lg text-[12px] font-medium bg-slate-700/80 text-slate-200 hover:bg-slate-600 transition-colors"
-          >
-            취소
-          </button>
+          isGameStarted ? (
+            <button
+              type="button"
+              onClick={() => setIsStartModalOpen(false)}
+              className="px-3.5 py-1.5 rounded-lg text-[12px] font-medium bg-slate-700/80 text-slate-200 hover:bg-slate-600 transition-colors"
+            >
+              계속하기
+            </button>
+          ) : null
         }
       >
         <div className="space-y-3">
           <p className="text-[12px] text-slate-300">
-            플레이할 격자 크기를 선택해 주세요.
+            시작할 격자 크기를 선택해 주세요.
           </p>
-          <div className="grid grid-cols-3 gap-2 pt-1">
+          <div className="grid grid-cols-3 gap-2.5 pt-1">
             {AVAILABLE_SIZES.map((size) => (
               <button
-                key={`size-${size}`}
+                key={`start-size-${size}`}
                 type="button"
-                onClick={() => handleChangeGridSize(size)}
-                className={`py-3 px-2 rounded-xl text-[12px] font-semibold border transition-all active:scale-95 flex flex-col items-center gap-1 ${
+                onClick={() => handleStartGame(size)}
+                className={`py-3.5 px-2 rounded-xl text-[12px] font-semibold border transition-all active:scale-95 flex flex-col items-center gap-1.5 ${
                   gridSize === size
-                    ? 'bg-sky-200 text-sky-950 border-sky-300 shadow-md ring-2 ring-sky-400/50'
+                    ? 'bg-sky-200 text-sky-950 border-sky-300 shadow-lg ring-2 ring-sky-400/60'
                     : 'bg-slate-800/80 text-slate-200 border-slate-700 hover:bg-slate-700/80'
                 }`}
               >
-                <span className="text-[14px] font-bold">{size} x {size}</span>
+                <span className="text-[16px] font-bold">{size} x {size}</span>
                 <span className="text-[11px] opacity-80">{size * size} 칸</span>
               </button>
             ))}
@@ -454,13 +451,13 @@ export default function App() {
             <ul className="list-disc list-inside mt-1 space-y-0.5 text-slate-300">
               <li>키보드: 방향키(↑, ↓, ←, →) 또는 W, A, S, D</li>
               <li>화면: 격자판을 마우스로 드래그하거나 스마트폰으로 스와이프</li>
-              <li>버튼: 격자판 아래의 방향 화살표 클릭</li>
+              <li>버튼: 격자판 아래의 대형 방향 화살표 클릭</li>
             </ul>
           </div>
           <div>
-            <span className="font-semibold text-slate-100">2. 격자 선택:</span>
+            <span className="font-semibold text-slate-100">2. 신규 블록 표시:</span>
             <p className="mt-1 leading-relaxed text-slate-300">
-              상단의 격자 버튼을 눌러 언제든지 4x4, 5x5, 6x6 모드로 전환할 수 있습니다.
+              새로 생성되는 블록은 청록색 네온 펄스 테두리가 반짝여 쉽게 위치를 파악할 수 있습니다.
             </p>
           </div>
           <div>
